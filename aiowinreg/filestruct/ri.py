@@ -26,9 +26,9 @@ class NTRegistryRI:
 	def from_buffer(buff):
 		lf = NTRegistryRI()
 		lf.magic = buff.read(2)
-		lf.keys_cnt = int.from_bytes(reader.read(2), 'little', signed = False)
+		lf.keys_cnt = int.from_bytes(buff.read(2), 'little', signed = False)
 		for _ in lf.keys_cnt:
-			hr = NTRegistryHR.from_buffer(reader)
+			hr = NTRegistryHR.from_buffer(buff)
 			lf.hash_records.append(hr)
 		return lf
 		

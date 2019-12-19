@@ -49,15 +49,20 @@ class NTRegistryVK:
 		####
 		self.data = None
 		
-	def load_data(self, reader):
+	def load_data(self, reader, is_file = True):
 		if self.data_length == 0:
 			return b''
 		elif self.data_length < 5:
 			return self.offset_data
 		else:
-			reader.seek(self.offset_data+ 4 + 4096)
+			if is_file is True:
+				reader.seek(self.offset_data+ 4 + 4096)
+			else:
+				reader.seek(self.offset_data+ 4)
 			self.data = reader.read(self.data_length+4) ###??? +4
 			return self.data
+			
+
 		
 
 	@staticmethod

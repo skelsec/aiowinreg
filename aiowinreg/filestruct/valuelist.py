@@ -19,8 +19,11 @@ class ValueList:
 		self.record_offsets = []
 	
 	@staticmethod
-	def load_data_from_offset(reader, offset, size):
-		reader.seek(4096+offset, 0)
+	def load_data_from_offset(reader, offset, size, is_file = True):
+		if is_file is True:
+			reader.seek(4096+offset, 0)
+		else:
+			reader.seek(offset,0)
 		return ValueList.from_buffer(reader, size)
 		
 	

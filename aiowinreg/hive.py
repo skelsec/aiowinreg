@@ -9,33 +9,46 @@ from aiowinreg.filestruct.valuelist import ValueList
 
 
 class AIOWinRegHive:
-	def __init__(self, reader):
+	def __init__(self, reader, root_hbin = None, is_file = True):
 		self.reader = reader
 		self.header = None
 		self.root = None
+		self.root_hbin = root_hbin
+		self.is_file = is_file
+		if root_hbin is not None:
+			self.header = NTRegistryHeadr()
 		
 	def close(self):
 		self.reader.close()
 
 	def setup(self):
-		self.header = NTRegistryHeadr.read(self.reader)
-		self.root = self.search_root_key()
+		if self.header is None:
+			self.header = NTRegistryHeadr.read(self.reader)
+		if self.root is None:
+			self.root = self.search_root_key()
 
 	def search_root_key(self):
-		self.reader.seek(4096, 0)
-		hbin_offset = 4096
-		offset_next = -1
+		
+		if not self.root_hbin:
+			self.reader.seek(4096, 0)
+			hbin_offset = 4096
+			offset_next = -1
 
-		while offset_next != 0:
-			self.reader.seek(hbin_offset,0)
-			hbin = NTRegistryHbin.read(self.reader)
-			for cell in hbin.cells:
+			while offset_next != 0:
+				self.reader.seek(hbin_offset,0)
+				hbin = NTRegistryHbin.read(self.reader)
+				for cell in hbin.cells:
+					if isinstance(cell.data, NTRegistryNK):
+						if NKFlag.ROOT in cell.data.flags:
+							self.root_hbin = hbin
+							return cell.data
+				hbin_offset += hbin.offset_next
+				offset_next = hbin.offset_next
+		else:
+			for cell in self.root_hbin.cells:
 				if isinstance(cell.data, NTRegistryNK):
 					if NKFlag.ROOT in cell.data.flags:
 						return cell.data
-			hbin_offset += hbin.offset_next
-			offset_next = hbin.offset_next
-
 
 		raise Exception('Could not find root key!')		
 		
@@ -43,9 +56,9 @@ class AIOWinRegHive:
 	def find_subkey(self, parent, key_name):
 		if self.root is None:
 			self.setup()
-		key = NTRegistryCell.load_data_from_offset(self.reader, parent.offset_lf_stable)
+		key = NTRegistryCell.load_data_from_offset(self.reader, parent.offset_lf_stable, self.is_file)
 		for offset in key.get_key_offsets(key_name):
-			rec = NTRegistryCell.load_data_from_offset(self.reader,offset)
+			rec = NTRegistryCell.load_data_from_offset(self.reader,offset, self.is_file)
 			if rec.name == key_name:
 					return rec
 				
@@ -76,9 +89,9 @@ class AIOWinRegHive:
 		names = []
 		key = self.find_key(key_path, throw)
 		if key.subkey_cnt_stable > 0:
-			rec = NTRegistryCell.load_data_from_offset(self.reader,key.offset_lf_stable)
+			rec = NTRegistryCell.load_data_from_offset(self.reader,key.offset_lf_stable, self.is_file)
 			for hash_rec in rec.hash_records:
-				subkey = NTRegistryCell.load_data_from_offset(self.reader,hash_rec.offset_nk)
+				subkey = NTRegistryCell.load_data_from_offset(self.reader,hash_rec.offset_nk, self.is_file)
 				names.append(subkey.name)
 		
 		return names
@@ -90,9 +103,12 @@ class AIOWinRegHive:
 		values = []
 		if key.value_cnt <= 0:
 			return values
-		vl = ValueList.load_data_from_offset(self.reader, key.offset_value_list, key.value_cnt + 1)
+		vl = ValueList.load_data_from_offset(self.reader, key.offset_value_list, key.value_cnt + 1, self.is_file)
 		for record_offset in vl.record_offsets:
-			block = NTRegistryCell.load_data_from_offset(self.reader, record_offset)
+			if record_offset < 0:
+				#print('Skipping value because offset smaller than 0! %s ' % record_offset)
+				continue
+			block = NTRegistryCell.load_data_from_offset(self.reader, record_offset, self.is_file)
 			if not block:
 				continue
 			if block.flag == 0:
@@ -114,16 +130,19 @@ class AIOWinRegHive:
 		if key.value_cnt <= 0:
 			return None
 		
-		vl = ValueList.load_data_from_offset(self.reader, key.offset_value_list, key.value_cnt + 1)
+		vl = ValueList.load_data_from_offset(self.reader, key.offset_value_list, key.value_cnt + 1, self.is_file)
 		for record_offset in vl.record_offsets:
-			block = NTRegistryCell.load_data_from_offset(self.reader, record_offset)
+			if record_offset < 0:
+				#print('Skipping value because offset smaller than 0! %s ' % record_offset)
+				continue
+			block = NTRegistryCell.load_data_from_offset(self.reader, record_offset, self.is_file)
 			if not block:
 				continue
 			if block.flag == 0:
 				if value_name == 'default':
-					return (block.value_type, block.load_data(self.reader))
+					return (block.value_type, block.load_data(self.reader, is_file = self.is_file))
 			elif value_name == block.name.decode():
-				return (block.value_type, block.load_data(self.reader))
+				return (block.value_type, block.load_data(self.reader, is_file = self.is_file))
 				
 		raise Exception('Could not find %s' % value_path)
 		
@@ -136,5 +155,8 @@ class AIOWinRegHive:
 			return None
 		
 		if key.offset_classname > 0:
-			self.reader.seek(key.offset_classname + 4096 + 4, 0)
+			if self.is_file is True:
+				self.reader.seek(key.offset_classname + 4096 + 4, 0)
+			else:
+				self.reader.seek(key.offset_classname + 4, 0)
 			return self.reader.read(key.class_name_length).decode('utf-16-le')
