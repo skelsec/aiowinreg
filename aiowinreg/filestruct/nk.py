@@ -90,7 +90,7 @@ class NTRegistryNK:
 		nk.unknown = int.from_bytes(buff.read(4), 'little', signed = False)
 		nk.name_length = int.from_bytes(buff.read(2), 'little', signed = False)
 		nk.class_name_length = int.from_bytes(buff.read(2), 'little', signed = False)
-		encoding = 'ascii' if NKFlag.ASCII_NAME in nk.flags else 'utf-16-le'
+		encoding = 'iso-8859-15' if NKFlag.ASCII_NAME in nk.flags else 'utf-16-le'
 		try:
 			nk.name = buff.read(nk.name_length)
 			nk.name = nk.name.decode(encoding)
