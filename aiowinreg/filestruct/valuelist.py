@@ -25,6 +25,19 @@ class ValueList:
 		else:
 			reader.seek(offset,0)
 		return ValueList.from_buffer(reader, size)
+
+	@staticmethod
+	async def aload_data_from_offset(reader, offset, size, is_file = True):
+		if is_file is True:
+			await reader.seek(4096+offset, 0)
+		else:
+			await reader.seek(offset,0)
+
+		sk = ValueList()
+		for _ in range(size):
+			t = await reader.read(4)
+			sk.record_offsets.append(int.from_bytes(t, 'little', signed = True))
+		return sk
 		
 	
 	@staticmethod

@@ -23,6 +23,7 @@ Offset	Size	Contents
 
 """
 
+import io
 from aiowinreg.filestruct.regcell import NTRegistryCell
 
 class NTRegistryHbin:
@@ -34,14 +35,34 @@ class NTRegistryHbin:
 
 		self.cells = []
 
+	def parse_header_bytes(self, data):
+		self.parse_header_buffer(io.BytesIO(data))
+	
+	def parse_header_buffer(self, buffer):
+		self.magic = buffer.read(4)
+		self.offset_first = int.from_bytes(buffer.read(4), 'little', signed = False)
+		self.offset_next = int.from_bytes(buffer.read(4), 'little', signed = False)
+		self.block_size = int.from_bytes(buffer.read(4), 'little', signed = False)
+		buffer.read(16)
+
+	@staticmethod
+	async def aread(reader):
+		hbin = NTRegistryHbin()
+		hdr_data = await reader.read(32)
+		hbin.parse_header_bytes(hdr_data)
+
+		cell = await NTRegistryCell.aread(reader)
+		hbin.cells.append(cell)
+		while cell.size != 0:
+			cell = await NTRegistryCell.aread(reader)
+			hbin.cells.append(cell)
+
+		return hbin
+
 	@staticmethod
 	def read(reader):
 		hbin = NTRegistryHbin()
-		hbin.magic = reader.read(4)
-		hbin.offset_first = int.from_bytes(reader.read(4), 'little', signed = False)
-		hbin.offset_next = int.from_bytes(reader.read(4), 'little', signed = False)
-		hbin.block_size = int.from_bytes(reader.read(4), 'little', signed = False)
-		reader.read(16)
+		hbin.parse_header_buffer(reader)
 		
 		cell = NTRegistryCell.read(reader)
 		hbin.cells.append(cell)

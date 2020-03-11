@@ -14,6 +14,7 @@
 0x0000002C	D-Word	1
 0x000001FC	D-Word	Sum of all D-Words from 0x00000000 to 0x000001FB
 """
+import io
 
 class NTRegistryHeadr:
 	def __init__(self):
@@ -30,21 +31,34 @@ class NTRegistryHeadr:
 		self.u7 = None
 		self.chksum = None
 
+	def parse_header_bytes(self, data):
+		self.parse_header_buffer(io.BytesIO(data))
+	
+	def parse_header_buffer(self, reader):
+		self.magic = reader.read(4)
+		self.u1 = reader.read(4)
+		self.u2 = reader.read(4)
+		self.last_modified = reader.read(8)
+		self.u3 = int.from_bytes(reader.read(4), 'little', signed = False)
+		self.u4 = int.from_bytes(reader.read(4), 'little', signed = False)
+		self.u5 = int.from_bytes(reader.read(4), 'little', signed = False)
+		self.u6 = int.from_bytes(reader.read(4), 'little', signed = False)
+		self.offset = int.from_bytes(reader.read(4), 'little', signed = False)
+		self.size = int.from_bytes(reader.read(4), 'little', signed = False)
+		self.u7 = int.from_bytes(reader.read(4), 'little', signed = False)
+		self.chksum = int.from_bytes(reader.read(4), 'little', signed = False)
+	
+	@staticmethod
+	async def aread(reader):
+		hdr = NTRegistryHeadr()
+		data = await reader.read(52)
+		hdr.parse_header_bytes(data)
+		return hdr
+
 	@staticmethod
 	def read(reader):
 		hdr = NTRegistryHeadr()
-		hdr.magic = reader.read(4)
-		hdr.u1 = reader.read(4)
-		hdr.u2 = reader.read(4)
-		hdr.last_modified = reader.read(8)
-		hdr.u3 = int.from_bytes(reader.read(4), 'little', signed = False)
-		hdr.u4 = int.from_bytes(reader.read(4), 'little', signed = False)
-		hdr.u5 = int.from_bytes(reader.read(4), 'little', signed = False)
-		hdr.u6 = int.from_bytes(reader.read(4), 'little', signed = False)
-		hdr.offset = int.from_bytes(reader.read(4), 'little', signed = False)
-		hdr.size = int.from_bytes(reader.read(4), 'little', signed = False)
-		hdr.u7 = int.from_bytes(reader.read(4), 'little', signed = False)
-		hdr.chksum = int.from_bytes(reader.read(4), 'little', signed = False)
+		hdr.parse_header_buffer(reader)
 		return hdr
 
 	def __str__(self):
