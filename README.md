@@ -1,5 +1,2 @@
 # aiowinreg
-Registry hive parsing the async way
-
-# IMPORTANT
-Currently no async here! 
+Registry hive reader library implementing both async and regural parsing
