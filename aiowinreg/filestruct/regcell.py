@@ -33,7 +33,14 @@ class NTRegistryCell:
 	@staticmethod
 	async def aread(reader):
 		cell = NTRegistryCell()
-		t = await reader.read(4)
+		res = await reader.read(4)
+		if isinstance(res, tuple):
+			t, err = res
+			if err is not None:
+				raise err
+		else:
+			t = res
+
 		if t == b'hbin':
 			cell.size = 0
 			return cell
@@ -44,12 +51,25 @@ class NTRegistryCell:
 		if cell.size == 0:
 			return cell
 		elif cell.size > 0:
-			cell.data = await reader.read(cell.size - 4)
+			res = await reader.read(cell.size - 4)
+			if isinstance(res, tuple):
+				cell.data, err = res
+				if err is not None:
+					raise err
+			else:
+				cell.data = res
+
 			if cell.data[:2] in NTRegistryKeyTypes:
 				cell.data = NTRegistryKeyTypes[cell.data[:2]].from_bytes(cell.data)
 			
 		else:
-			cell.data = await reader.read( (-1)*cell.size - 4)
+			res = await reader.read( (-1)*cell.size - 4)
+			if isinstance(res, tuple):
+				cell.data, err = res
+				if err is not None:
+					raise err
+			else:
+				cell.data = res
 
 		return cell
 

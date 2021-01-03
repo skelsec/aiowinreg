@@ -28,7 +28,7 @@ class AIOWinRegHive:
 		if self.header is None:
 			self.header = await NTRegistryHeadr.aread(self.reader)
 		if self.root is None:
-			self.root = self.search_root_key()
+			self.root = await self.search_root_key()
 
 	async def search_root_key(self):
 		
@@ -76,7 +76,7 @@ class AIOWinRegHive:
 		working_path = ''
 		parent_key = self.root
 		for key in key_path.split('\\'):
-			skey = self.find_subkey(parent_key, key)
+			skey = await self.find_subkey(parent_key, key)
 			if skey is None:
 				if throw is True:
 					raise Exception('Could not find subkey! Full path: %s Working path: %s Missing key name: %s' % (key_path, working_path, key))
@@ -90,7 +90,7 @@ class AIOWinRegHive:
 		if self.root is None:
 			self.setup()
 		names = []
-		key = self.find_key(key_path, throw)
+		key = await self.find_key(key_path, throw)
 		if key.subkey_cnt_stable > 0:
 			rec = await NTRegistryCell.aload_data_from_offset(self.reader,key.offset_lf_stable, self.is_file)
 			for hash_rec in rec.hash_records:
@@ -127,7 +127,7 @@ class AIOWinRegHive:
 		key_path = ntpath.dirname(value_path)
 		value_name = ntpath.basename(value_path)
 		
-		key = self.find_key(key_path, throw)
+		key = await self.find_key(key_path, throw)
 		if key is None:
 			return None
 		if key.value_cnt <= 0:
@@ -154,7 +154,7 @@ class AIOWinRegHive:
 	async def get_class(self, key_path, throw = True):
 		if self.root is None:
 			self.setup()
-		key = self.find_key(key_path, throw)
+		key = await self.find_key(key_path, throw)
 
 		if key is None:
 			return None
@@ -164,5 +164,11 @@ class AIOWinRegHive:
 				await self.reader.seek(key.offset_classname + 4096 + 4, 0)
 			else:
 				await self.reader.seek(key.offset_classname + 4, 0)
-			data = await self.reader.read(key.class_name_length)
+			res = await self.reader.read(key.class_name_length)
+			if isinstance(res, tuple):
+				data, err = res
+				if err is not None:
+					raise err
+			else:
+				data = res
 			return data.decode('utf-16-le')

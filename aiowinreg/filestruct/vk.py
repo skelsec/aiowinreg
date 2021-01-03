@@ -61,7 +61,25 @@ class NTRegistryVK:
 				reader.seek(self.offset_data+ 4)
 			self.data = reader.read(self.data_length+4) ###??? +4
 			return self.data
-			
+
+	async def aload_data(self, reader, is_file = True):
+		if self.data_length == 0:
+			return b''
+		elif self.data_length < 5:
+			return self.offset_data
+		else:
+			if is_file is True:
+				await reader.seek(self.offset_data+ 4 + 4096)
+			else:
+				await reader.seek(self.offset_data+ 4)
+			res = await reader.read(self.data_length+4) ###??? +4
+			if isinstance(res, tuple):
+				self.data, err = res
+				if err is not None:
+					raise err
+			else:
+				self.data = res
+			return self.data	
 
 		
 

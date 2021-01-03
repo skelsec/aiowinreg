@@ -48,7 +48,13 @@ class NTRegistryHbin:
 	@staticmethod
 	async def aread(reader):
 		hbin = NTRegistryHbin()
-		hdr_data = await reader.read(32)
+		res = await reader.read(32)
+		if isinstance(res, tuple):
+			hdr_data, err = res
+			if err is not None:
+				raise err
+		else:
+			hdr_data = res
 		hbin.parse_header_bytes(hdr_data)
 
 		cell = await NTRegistryCell.aread(reader)

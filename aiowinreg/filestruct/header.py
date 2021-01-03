@@ -51,7 +51,13 @@ class NTRegistryHeadr:
 	@staticmethod
 	async def aread(reader):
 		hdr = NTRegistryHeadr()
-		data = await reader.read(52)
+		res = await reader.read(52)
+		if isinstance(res, tuple):
+			data, err = res
+			if err is not None:
+				raise err
+		else:
+			data = res
 		hdr.parse_header_bytes(data)
 		return hdr
 

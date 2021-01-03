@@ -35,7 +35,13 @@ class ValueList:
 
 		sk = ValueList()
 		for _ in range(size):
-			t = await reader.read(4)
+			res = await reader.read(4)
+			if isinstance(res, tuple):
+				t, err = res
+				if err is not None:
+					raise err
+			else:
+				t = res
 			sk.record_offsets.append(int.from_bytes(t, 'little', signed = True))
 		return sk
 		
