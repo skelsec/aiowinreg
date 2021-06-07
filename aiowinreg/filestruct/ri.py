@@ -11,6 +11,7 @@ Offset	Size	Contents
 
 """
 import io
+from aiowinreg.filestruct.hashrecord import NTRegistryHR
 
 class NTRegistryRI:
 	def __init__(self):
@@ -27,7 +28,7 @@ class NTRegistryRI:
 		lf = NTRegistryRI()
 		lf.magic = buff.read(2)
 		lf.keys_cnt = int.from_bytes(buff.read(2), 'little', signed = False)
-		for _ in lf.keys_cnt:
+		for _ in range(lf.keys_cnt):
 			hr = NTRegistryHR.from_buffer(buff)
 			lf.hash_records.append(hr)
 		return lf

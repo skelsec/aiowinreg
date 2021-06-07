@@ -28,7 +28,7 @@ class NTRegistryLF:
 		"""
 		offsets = []
 		for hr in self.hash_records:
-			if hr.hash_data.strip(b'\x00') == key_name.encode('ascii')[:4]:
+			if hr.hash_data.strip(b'\x00').decode('ascii').lower() == key_name.lower()[:4]:
 				offsets.append(hr.offset_nk)
 				
 		return offsets

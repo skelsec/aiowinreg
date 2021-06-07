@@ -62,6 +62,24 @@ class NTRegistryNK:
 		self.class_name_length = None
 		self.name = None
 
+		self.raw_data = None
+
+	@staticmethod
+	def nameparse(data):
+		nk = NTRegistryNK()
+		nk.raw_data = data
+
+		nk.flags = NKFlag(int.from_bytes(data[2:4], 'little', signed = False))
+		nk.name_length = int.from_bytes(data[72:74], 'little', signed = False)
+		encoding = 'iso-8859-15' if NKFlag.ASCII_NAME in nk.flags else 'utf-16-le'
+		try:
+			nk.name = data[76:76+nk.name_length]
+			nk.name = nk.name.decode(encoding)
+		except Exception as e:
+			raise e
+		
+		return nk
+
 	@staticmethod
 	def from_bytes(data):
 		return NTRegistryNK.from_buffer(io.BytesIO(data))

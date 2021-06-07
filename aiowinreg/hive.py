@@ -6,6 +6,10 @@ from aiowinreg.filestruct.hbin import NTRegistryHbin
 from aiowinreg.filestruct.nk import NTRegistryNK, NKFlag
 from aiowinreg.filestruct.regcell import NTRegistryCell
 from aiowinreg.filestruct.valuelist import ValueList
+from aiowinreg.filestruct.hashrecord import NTRegistryHR
+from aiowinreg.filestruct.lh import NTRegistryLH
+from aiowinreg.filestruct.ri import NTRegistryRI
+
 
 
 class AIOWinRegHive:
@@ -17,6 +21,8 @@ class AIOWinRegHive:
 		self.is_file = is_file
 		if root_hbin is not None:
 			self.header = NTRegistryHeadr()
+		self.__cells_lookup = {}
+		self.__key_lookup = {}
 		
 	def close(self):
 		self.reader.close()
@@ -50,17 +56,49 @@ class AIOWinRegHive:
 					if NKFlag.ROOT in cell.data.flags:
 						return cell.data
 
-		raise Exception('Could not find root key!')		
+		raise Exception('Could not find root key!')
+	
+	def __load_cell_from_offset(self, offset, nk_partial=False):
+		if offset not in self.__cells_lookup:
+			cell = NTRegistryCell.load_data_from_offset(self.reader, offset, self.is_file, nk_partial=False)
+			self.__cells_lookup[offset] = cell
+		return self.__cells_lookup[offset]
 		
-		
+	def __find_subkey(self, hash_rec, key_name):
+		for _ in range(255):
+			subkey = self.__load_cell_from_offset(hash_rec.offset_nk, nk_partial=True)
+			if isinstance(subkey, NTRegistryHR):
+				hash_rec = subkey
+				continue
+			elif isinstance(subkey, (NTRegistryRI, NTRegistryLH)):
+				for thash_rec in subkey.hash_records:
+					res = self.__find_subkey(thash_rec, key_name)
+					if res is not None:
+						return res
+				
+			else:
+				if subkey.name.upper() == key_name.upper():
+					return subkey
+			return
+
 	def find_subkey(self, parent, key_name):
 		if self.root is None:
 			self.setup()
-		key = NTRegistryCell.load_data_from_offset(self.reader, parent.offset_lf_stable, self.is_file)
+		
+		key = self.__load_cell_from_offset(parent.offset_lf_stable)
+		if key is None:
+			return None
+		
+		if isinstance(key, NTRegistryRI):
+			for thash_rec in key.hash_records:
+				res = self.__find_subkey(thash_rec, key_name)
+				if res is not None:
+					return res
+
 		for offset in key.get_key_offsets(key_name):
-			rec = NTRegistryCell.load_data_from_offset(self.reader,offset, self.is_file)
-			if rec.name == key_name:
-					return rec
+			rec = self.__load_cell_from_offset(offset)
+			if rec.name.upper() == key_name.upper():
+				return rec
 				
 		return None
 		
@@ -69,19 +107,21 @@ class AIOWinRegHive:
 			self.setup()
 		if len(key_path) < 2:
 			return self.root
-			
-		working_path = ''
-		parent_key = self.root
-		for key in key_path.split('\\'):
-			skey = self.find_subkey(parent_key, key)
-			if skey is None:
-				if throw is True:
-					raise Exception('Could not find subkey! Full path: %s Working path: %s Missing key name: %s' % (key_path, working_path, key))
-				else:
-					return None
-			working_path += '\\%s' % key
-			parent_key = skey
-		return parent_key
+		
+		if key_path not in self.__key_lookup:
+			working_path = ''
+			parent_key = self.root
+			for key in key_path.split('\\'):
+				skey = self.find_subkey(parent_key, key)
+				if skey is None:
+					if throw is True:
+						raise Exception('Could not find subkey! Full path: %s Working path: %s Missing key name: %s' % (key_path, working_path, key))
+					else:
+						return None
+				working_path += '\\%s' % key
+				parent_key = skey
+			self.__key_lookup[key_path] = parent_key
+		return self.__key_lookup[key_path]
 		
 	def enum_key(self, key_path, throw = True):
 		if self.root is None:
@@ -89,14 +129,31 @@ class AIOWinRegHive:
 		names = []
 		key = self.find_key(key_path, throw)
 		if key.subkey_cnt_stable > 0:
-			rec = NTRegistryCell.load_data_from_offset(self.reader,key.offset_lf_stable, self.is_file)
+			rec = self.__load_cell_from_offset(key.offset_lf_stable, nk_partial=False)
 			for hash_rec in rec.hash_records:
-				subkey = NTRegistryCell.load_data_from_offset(self.reader,hash_rec.offset_nk, self.is_file)
-				names.append(subkey.name)
-		
+				names += self.__get_name(hash_rec)
+
 		return names
-		
-		
+
+	def __get_name(self, hash_rec):
+		names = []
+		for _ in range(255):
+			subkey = self.__load_cell_from_offset(hash_rec.offset_nk, nk_partial=False)
+			if isinstance(subkey, NTRegistryHR):
+				hash_rec = subkey
+				continue
+			elif isinstance(subkey, (NTRegistryRI, NTRegistryLH)):
+				for thash_rec in subkey.hash_records:
+					names += self.__get_name(thash_rec)
+				break
+			else:
+				if subkey is None:
+					break
+				names.append(subkey.name)
+				break
+
+		return names
+
 	def list_values(self, key):
 		if self.root is None:
 			self.setup()
@@ -108,7 +165,7 @@ class AIOWinRegHive:
 			if record_offset < 0:
 				#print('Skipping value because offset smaller than 0! %s ' % record_offset)
 				continue
-			block = NTRegistryCell.load_data_from_offset(self.reader, record_offset, self.is_file)
+			block = self.__load_cell_from_offset(record_offset, nk_partial=False)
 			if not block:
 				continue
 			if block.flag == 0:
@@ -118,13 +175,20 @@ class AIOWinRegHive:
 			
 		return values
 		
-	def get_value(self, value_path, throw = True):
+	def get_value(self, value_path, throw = True, key = None):
 		if self.root is None:
 			self.setup()
-		key_path = ntpath.dirname(value_path)
-		value_name = ntpath.basename(value_path)
 		
-		key = self.find_key(key_path, throw)
+		if key is None:
+			if value_path.find('\t') != -1:
+				key_path, value_name = value_path.split('\t', 1)
+			else:
+				key_path = ntpath.dirname(value_path)
+				value_name = ntpath.basename(value_path)
+			key = self.find_key(key_path, throw)
+		else:
+			value_name = value_path
+		
 		if key is None:
 			return None
 		if key.value_cnt <= 0:
@@ -133,9 +197,8 @@ class AIOWinRegHive:
 		vl = ValueList.load_data_from_offset(self.reader, key.offset_value_list, key.value_cnt + 1, self.is_file)
 		for record_offset in vl.record_offsets:
 			if record_offset < 0:
-				#print('Skipping value because offset smaller than 0! %s ' % record_offset)
 				continue
-			block = NTRegistryCell.load_data_from_offset(self.reader, record_offset, self.is_file)
+			block = self.__load_cell_from_offset(record_offset, nk_partial=False)
 			if not block:
 				continue
 			if block.flag == 0:
@@ -160,3 +223,11 @@ class AIOWinRegHive:
 			else:
 				self.reader.seek(key.offset_classname + 4, 0)
 			return self.reader.read(key.class_name_length).decode('utf-16-le')
+
+	
+	def get_sd(self, key):
+		if self.root is None:
+			self.setup()
+		
+		sk = self.__load_cell_from_offset(key.offset_sk, nk_partial=False)
+		return sk.sd

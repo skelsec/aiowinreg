@@ -1,24 +1,7 @@
-
+from winacl.dtyp.security_descriptor import SECURITY_DESCRIPTOR
 
 """
-the nk-Record
-=============
 
-Offset	Size	Contents
-0x0000	Word	ID: ASCII-"nk" = 0x6B6E
-0x0002	Word	for the root-key: 0x2C, otherwise 0x20
-0x0004	Q-Word	write-date/time in windows nt notation
-0x0010	D-Word	Offset of Owner/Parent key
-0x0014	D-Word	number of sub-Keys
-0x001C	D-Word	Offset of the sub-key lf-Records
-0x0024	D-Word	number of values
-0x0028	D-Word	Offset of the Value-List
-0x002C	D-Word	Offset of the sk-Record
-0x0030	D-Word	Offset of the Class-Name
-0x0044	D-Word	Unused (data-trash)
-0x0048	Word	name-length
-0x004A	Word	class-name length
-0x004C	????	key-name
 """
 import io
 
@@ -45,7 +28,8 @@ class NTRegistrySK:
 		sk.offset_next = int.from_bytes(buff.read(4), 'little', signed = False)
 		sk.reference_cnt = int.from_bytes(buff.read(4), 'little', signed = False)
 		sk.sd_size = int.from_bytes(buff.read(4), 'little', signed = False)
-		sk.sd = buff.read(sk.sd_size)
+		if sk.sd_size > 15:
+			sk.sd = SECURITY_DESCRIPTOR.from_bytes(buff.read(sk.sd_size))
 		return sk
 
 	def __str__(self):
