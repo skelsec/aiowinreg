@@ -55,13 +55,13 @@ class NTRegistryVK:
 	def format_data(self):
 		#TODO: implement others
 		if self.value_type == REGTYPE.REG_SZ:
-			self.data_fmt = self.data.decode('utf-16-le')
+			self.data_fmt = self.data.decode('utf-16-le').strip()
 		elif self.value_type == REGTYPE.REG_MULTI_SZ:
 			self.data_fmt = []
 			for entry in self.data.split(b'\x00\x00\x00'):
 				if len(entry) == 0 or entry == b'\x00\x00':
 					continue
-				self.data_fmt.append((entry + b'\x00\x00\x00').decode('utf-16-le'))
+				self.data_fmt.append((entry + b'\x00\x00\x00').decode('utf-16-le').strip())
 		elif self.value_type == REGTYPE.REG_DWORD:
 			self.data_fmt = int.from_bytes(self.data, byteorder='little', signed = False)
 		elif self.value_type == REGTYPE.REG_DWORD_BIG_ENDIAN:
