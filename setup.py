@@ -46,5 +46,10 @@ setup(
 	install_requires=[
 		'winacl>=0.1.1',
 	],
+	entry_points = {
+	'console_scripts': [
+			'awinreg = aiowinreg.__main__:main',
+		],
+	},
 	
 )

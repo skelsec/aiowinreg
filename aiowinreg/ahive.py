@@ -8,6 +8,7 @@ from aiowinreg.filestruct.valuelist import ValueList
 from aiowinreg.filestruct.hashrecord import NTRegistryHR
 from aiowinreg.filestruct.lh import NTRegistryLH
 from aiowinreg.filestruct.ri import NTRegistryRI
+from aiowinreg.filestruct.vk import REGTYPE
 
 
 class AIOWinRegHive:
@@ -241,3 +242,47 @@ class AIOWinRegHive:
 		
 		sk = await self.__load_cell_from_offset(key.offset_sk, nk_partial=False)
 		return sk.sd
+
+	async def walk(self, path, depth = -1):
+		depth -= 1
+		if depth == 0:
+			return
+			
+		for key in await self.enum_key(path):
+			if path == '':
+				np = key
+			else:
+				np = path + '\\' + key
+			yield np
+			async for res in self.walk(np, depth):
+				yield res
+	
+	async def search(self, pattern, in_keys = True, in_valuenames = True, in_values = True):
+		async for keypath in self.walk('', -1):
+			if in_keys is True:
+				if keypath.find(pattern) != -1:
+					yield keypath
+			if in_valuenames or in_values is True:
+				key = await self.find_key(keypath)
+				for valuename in await self.list_values(key):
+					valuename = valuename.decode()
+					valuepath = keypath + '\\' + valuename
+					if in_valuenames is True and valuename.find(pattern) != -1:
+						yield valuepath
+					
+					if in_values is True:
+						res = await self.get_value(valuename, key = key)
+						valuetype, value = res
+						if valuetype == REGTYPE.REG_UNKNOWN and value.hex().find(pattern) != -1:
+							yield valuepath
+						elif valuetype == REGTYPE.REG_MULTI_SZ:
+							for i, val in enumerate(value):
+								if val.find(pattern) != -1:
+									yield valuepath
+									break
+						else:
+							t = value
+							if isinstance(value, bytes):
+								t = t.hex()
+							if str(value).find(pattern) != -1:
+								yield valuepath

@@ -171,7 +171,7 @@ class WinRegReaderConsole(aiocmd.PromptToolkitCmd):
 	
 	async def do_walk(self):
 		try:
-			async for keypath in self.walk(self.__current_path):
+			async for keypath in self.hive.walk(self.__current_path):
 				print('[%s][ROOT\\%s]' % (self.filename, keypath))
 				key = await self.hive.find_key(keypath)
 				_, err = await self.__lsval(keypath, key)
@@ -182,20 +182,11 @@ class WinRegReaderConsole(aiocmd.PromptToolkitCmd):
 			traceback.print_exc()
 			print('WALK failed! Reason: %s' % str(e))
 			return False, e
-
-	async def walk(self, path, depth = 10):
-		depth -= 1
-		if depth == 0:
-			return
-			
-		for key in await self.hive.enum_key(path):
-			if path == '':
-				np = key
-			else:
-				np = path + '\\' + key
-			yield np
-			async for res in self.walk(np, depth):
-				yield res
+	
+	async def do_search(self, pattern, in_keys = True, in_valuenames = True, in_values = True):
+		async for x in self.hive.search(pattern, in_keys = True, in_valuenames = True, in_values = True):
+			print(x)
+	
 
 	def get_current_keys(self):
 		if self.__current_path is None:
@@ -227,8 +218,7 @@ async def amain(args):
 			await console.run()
 			return
 			
-		cmd = shlex.split(command)		
-		print(cmd)	
+		cmd = shlex.split(command)
 		_, err = await console._run_single_command(cmd[0], cmd[1:])
 		if err is not None:
 			raise err
