@@ -44,6 +44,7 @@ setup(
 		"Operating System :: OS Independent",
 	),
 	install_requires=[
+		'prompt-toolkit>=3.0.2',
 		'winacl>=0.1.1',
 	],
 	entry_points = {
