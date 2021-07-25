@@ -12,7 +12,7 @@ from aiowinreg.utils.afile import AFile
 
 class WinRegReaderConsole(aiocmd.PromptToolkitCmd):
 	def __init__(self, filepath = None):
-		aiocmd.PromptToolkitCmd.__init__(self, ignore_sigint=False) #Setting this to false, since True doesnt work on windows...
+		aiocmd.PromptToolkitCmd.__init__(self, ignore_sigint=False)
 		self.filename = None
 		self.filepath = filepath
 		self.filehandle = None
@@ -22,7 +22,6 @@ class WinRegReaderConsole(aiocmd.PromptToolkitCmd):
 		self.__current_path_vals = []
 
 	async def do_open(self, filepath ):
-		"""Connects to the remote machine"""
 		try:
 			if self.filehandle is not None:
 				self.filehandle.close()

@@ -1,5 +1,8 @@
 
 class AFile:
+	"""
+	Utility class since most OSes don't yet support async file read operations
+	"""
 	def __init__(self, filepath):
 		self.filepath = filepath
 		self.fd = open(filepath, 'rb')
