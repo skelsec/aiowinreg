@@ -35,13 +35,16 @@ class CMD:
 	@staticmethod
 	def deserialize(d):
 		# not safe, but this object is internal only
+		d['cmd'] = COMMAND(d['cmd'])
 		obj = copy.deepcopy(cmd2obj[d['cmd']])
 		for k in d:
 			setattr(obj, k, d[k])
 		return obj
 	
 	def to_dict(self):
-		return self.__dict__
+		x = self.__dict__
+		x['cmd'] = x['cmd'].value
+		return x
 
 	def to_json(self):
 		return json.dumps(self.to_dict(), cls = UniversalEncoder)

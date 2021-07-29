@@ -20,25 +20,37 @@ class AIOWinRegRemoteControlServer:
 		await self.__handle_in()
 
 	async def __handle_in(self):
-		while True:
-			data = await self.in_q.get()
-			cmd = CMD.deserialize(data)
-			if cmd.cmd == COMMAND.OPEN:
-				asyncio.create_task(self.do_open(cmd))
-			if cmd.cmd == COMMAND.LS:
-				asyncio.create_task(self.do_ls(cmd))
-			if cmd.cmd == COMMAND.CLOSE:
-				asyncio.create_task(self.do_close(cmd))
-				return
+		try:
+			while True:
+				data = await self.in_q.get()
+				try:
+					cmd = CMD.deserialize(data)
+				except Exception as e:
+					await self.out_q.put(CMDERR('0', 'Deserialization error! %s' % data).to_dict())
+					continue
+				if cmd.cmd == COMMAND.LS:
+					asyncio.create_task(self.do_ls(cmd))
+				elif cmd.cmd == COMMAND.OPEN:
+					asyncio.create_task(self.do_open(cmd))
+				elif cmd.cmd == COMMAND.CLOSE:
+					asyncio.create_task(self.do_close(cmd))
+					return
+				else:
+					await self.send_err(cmd, 'Unrecognized command! %s' % data)
+						
+		except Exception as e:
+			traceback.print_exc()
+
 	
 	async def send_ok(self, cmd):
-		await self.out_q.put(CMDOK(cmd.token))
+		await self.out_q.put(CMDOK(cmd.token).to_dict())
 	
 	async def send_err(self, cmd, reason = 'WINREG Error'):
-		await self.out_q.put(CMDERR(cmd.token, reason))
+		await self.out_q.put(CMDERR(cmd.token, reason).to_dict())
 
 	async def do_open(self, cmd):
 		try:
+			print('OPEN')
 			self.filepath = cmd.filepath
 			self.filename = ntpath.basename(self.filepath)
 			self.filehandle = AFile(self.filepath)
@@ -105,7 +117,7 @@ async def amain():
 
 	srv = AIOWinRegRemoteControlServer(in_q, out_q)
 	asyncio.create_task(srv.run())
-
+	
 	await in_q.put(CMDOPEN('1', regfile).to_dict())
 	await in_q.put(CMDLS('2', 'Policies\\Microsoft\\Windows NT\\Terminal Services\\Client').to_dict())
 	await in_q.put(CMDCLOSE('3').to_dict())
