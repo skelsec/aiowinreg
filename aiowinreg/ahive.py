@@ -28,16 +28,18 @@ class AIOWinRegHive:
 		self.__key_lookup = {}
 		
 	async def close(self):
+		"""Closes the hive"""
 		await self.reader.close()
 
 	async def setup(self):
+		"""Must be called before using the hive"""
 		if self.header is None:
 			self.header = await NTRegistryHeadr.aread(self.reader)
 		if self.root is None:
 			self.root = await self.search_root_key()
 
 	async def search_root_key(self):
-		
+
 		if not self.root_hbin:
 			await self.reader.seek(4096, 0)
 			hbin_offset = 4096
@@ -86,6 +88,7 @@ class AIOWinRegHive:
 		
 		
 	async def find_subkey(self, parent, key_name):
+		"""Find and return a subkey of the parent key"""
 		if self.root is None:
 			await self.setup()
 		key = await self.__load_cell_from_offset(parent.offset_lf_stable)
@@ -106,6 +109,7 @@ class AIOWinRegHive:
 		return None	
 		
 	async def find_key(self, key_path, throw = True):
+		"""Find and return a key by its full path"""
 		if self.root is None:
 			await self.setup()
 		if len(key_path) < 2:
@@ -125,6 +129,7 @@ class AIOWinRegHive:
 		return parent_key
 		
 	async def enum_key(self, key_path, throw = True):
+		"""Return a list of subkey names"""
 		if self.root is None:
 			await self.setup()
 		names = []
@@ -138,6 +143,7 @@ class AIOWinRegHive:
 		
 		
 	async def list_values(self, key):
+		"""Return a list of value names"""
 		if self.root is None:
 			await self.setup()
 		values = []
@@ -179,6 +185,7 @@ class AIOWinRegHive:
 		return names
 		
 	async def get_value(self, value_path, throw = True, key = None):
+		"""Return a value by its full path"""
 		if self.root is None:
 			await self.setup()
 		if key is None:
@@ -215,6 +222,7 @@ class AIOWinRegHive:
 		raise Exception('Could not find %s' % value_path)
 		
 	async def get_class(self, key_path, throw = True):
+		"""Return the class value of a key"""
 		if self.root is None:
 			await self.setup()
 		key = await self.find_key(key_path, throw)
@@ -237,6 +245,7 @@ class AIOWinRegHive:
 			return data.decode('utf-16-le')
 
 	async def get_sd(self, key):
+		"""Return the security descriptor of a key"""
 		if self.root is None:
 			await self.setup()
 		
@@ -244,6 +253,7 @@ class AIOWinRegHive:
 		return sk.sd
 
 	async def walk(self, path, depth = -1):
+		"""Walk the registry tree"""
 		depth -= 1
 		if depth == 0:
 			return
@@ -258,6 +268,7 @@ class AIOWinRegHive:
 				yield res
 	
 	async def search(self, pattern, in_keys = True, in_valuenames = True, in_values = True):
+		"""Search the registry tree for a pattern"""
 		async for keypath in self.walk('', -1):
 			if in_keys is True:
 				if keypath.find(pattern) != -1:
