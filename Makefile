@@ -6,12 +6,11 @@ clean:
 	find . -name '*.pyo' -exec rm -f {} +
 	find . -name '*~' -exec rm -f  {} +
 
-publish: clean
-	python3 sdist bdist_wheel
+publish: clean build
 	python3 -m twine upload dist/*
 
 rebuild: clean
 	pip install .
 
 build:
-	pip install .
+	pip wheel . -w dist --no-deps
