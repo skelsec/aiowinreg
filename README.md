@@ -13,7 +13,7 @@ cd aiowinreg
 pip install .
 ```
 # Usage
-Thos module is intended to be used as a library, however installing it provides a command line tool `awinreg` which can be used to traverse/read Windows hive files
+This module is intended to be used as a library, however installing it provides a command line tool `awinreg` which can be used to traverse/read Windows hive files
 
 # Tests
 Tests are included in the `./test` folder with sample files from various Windows Server registry hives.
