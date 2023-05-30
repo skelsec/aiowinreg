@@ -22,7 +22,7 @@ setup(
 	author_email="info@skelsecprojects.com",
 
 	# Packages
-	packages=find_packages(),
+	packages=find_packages(exclude=["tests*"]),
 
 	# Include additional files into the package
 	include_package_data=True,
@@ -38,14 +38,14 @@ setup(
 
 	# long_description=open("README.txt").read(),
 	python_requires='>=3.6',
-	classifiers=(
+	classifiers=[
 		"Programming Language :: Python :: 3.6",
 		"License :: OSI Approved :: MIT License",
 		"Operating System :: OS Independent",
-	),
+	],
 	install_requires=[
 		'prompt-toolkit>=3.0.2',
-		'winacl>=0.1.1',
+		'winacl>=0.1.7',
 	],
 	entry_points = {
 	'console_scripts': [
