@@ -91,8 +91,8 @@ class NTRegistryNK:
 		assert nk.magic == b'nk'
 		nk.flags = NKFlag(int.from_bytes(buff.read(2), 'little', signed = False))
 		nk.wite_time = buff.read(8)
-		nk.owner_offset = int.from_bytes(buff.read(4), 'little', signed = False)
 		nk.u1 = int.from_bytes(buff.read(4), 'little', signed = False)
+		nk.owner_offset = int.from_bytes(buff.read(4), 'little', signed = False)
 		nk.subkey_cnt_stable = int.from_bytes(buff.read(4), 'little', signed = False)
 		nk.subkey_cnt = int.from_bytes(buff.read(4), 'little', signed = False)
 		nk.offset_lf_stable = int.from_bytes(buff.read(4), 'little', signed = False)

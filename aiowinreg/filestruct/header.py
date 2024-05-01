@@ -1,5 +1,6 @@
 
 # https://bazaar.launchpad.net/~guadalinex-members/dumphive/trunk/view/head:/winreg.txt
+# https://github.com/msuhanov/regf/blob/master/Windows%20registry%20file%20format%20specification.md
 """
 0x00000000	D-Word	ID: ASCII-"regf" = 0x66676572
 0x00000004	D-Word	????
@@ -19,39 +20,50 @@ import io
 class NTRegistryHeadr:
 	def __init__(self):
 		self.magic = b'regf'
-		self.u1 = None
-		self.u2 = None
+		self.primary_sequence_number = None
+		self.secondary_sequence_number = None
 		self.last_modified = None
-		self.u3 = None
-		self.u4 = None
-		self.u5 = None
-		self.u6 = None
+		self.version_major = None
+		self.version_minor = None
+		self.file_type = None
+		self.file_format = None
 		self.offset = None
 		self.size = None
-		self.u7 = None
-		self.chksum = None
+		self.clustering_factor = None
+		self.file_name = None
+		self.reserved = None
+		self.checksum = None #XOR-32 checksum of the previous 508 bytes
+		self.boot_type = None
+		self.boot_recover = None
 
 	def parse_header_bytes(self, data):
 		self.parse_header_buffer(io.BytesIO(data))
 	
 	def parse_header_buffer(self, reader):
 		self.magic = reader.read(4)
-		self.u1 = reader.read(4)
-		self.u2 = reader.read(4)
+		self.primary_sequence_number = int.from_bytes(reader.read(4), 'little', signed = False)
+		self.secondary_sequence_number = int.from_bytes(reader.read(4), 'little', signed = False)
 		self.last_modified = reader.read(8)
-		self.u3 = int.from_bytes(reader.read(4), 'little', signed = False)
-		self.u4 = int.from_bytes(reader.read(4), 'little', signed = False)
-		self.u5 = int.from_bytes(reader.read(4), 'little', signed = False)
-		self.u6 = int.from_bytes(reader.read(4), 'little', signed = False)
+		self.version_major = int.from_bytes(reader.read(4), 'little', signed = False)
+		self.version_minor = int.from_bytes(reader.read(4), 'little', signed = False)
+		self.file_type = int.from_bytes(reader.read(4), 'little', signed = False)
+		self.file_format = int.from_bytes(reader.read(4), 'little', signed = False)
 		self.offset = int.from_bytes(reader.read(4), 'little', signed = False)
 		self.size = int.from_bytes(reader.read(4), 'little', signed = False)
-		self.u7 = int.from_bytes(reader.read(4), 'little', signed = False)
-		self.chksum = int.from_bytes(reader.read(4), 'little', signed = False)
-	
+		self.clustering_factor = int.from_bytes(reader.read(4), 'little', signed = False)
+		try:
+			self.file_name = reader.read(64).decode('utf-16-le').replace('\x00','')
+		except:
+			self.file_name = None
+		self.reserved = reader.read(3576)
+		self.checksum = int.from_bytes(reader.read(4), 'little', signed = False)
+		self.boot_type = int.from_bytes(reader.read(4), 'little', signed = False)
+		self.boot_recover = int.from_bytes(reader.read(4), 'little', signed = False)
+
 	@staticmethod
 	async def aread(reader):
 		hdr = NTRegistryHeadr()
-		res = await reader.read(52)
+		res = await reader.read(4096)
 		if isinstance(res, tuple):
 			data, err = res
 			if err is not None:
