@@ -1,3 +1,4 @@
+import io
 
 class AFile:
 	"""
@@ -16,4 +17,15 @@ class AFile:
 	async def close(self):
 		return self.fd.close()
 	
+class ABuffer:
+	def __init__(self, buffer:io.BytesIO):
+		self.fd = buffer
+		
+	async def seek(self, pos, whence = 0):
+		return self.fd.seek(pos, whence)
 	
+	async def read(self, n = -1):
+		return self.fd.read(n)
+	
+	async def close(self):
+		return self.fd.close()

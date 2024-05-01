@@ -1,4 +1,5 @@
 import ntpath
+import io
 
 from aiowinreg.filestruct.header import NTRegistryHeadr
 from aiowinreg.filestruct.hbin import NTRegistryHbin
@@ -9,7 +10,7 @@ from aiowinreg.filestruct.hashrecord import NTRegistryHR
 from aiowinreg.filestruct.lh import NTRegistryLH
 from aiowinreg.filestruct.ri import NTRegistryRI
 from aiowinreg.filestruct.vk import REGTYPE
-
+from aiowinreg.utils.afile import ABuffer, AFile
 
 class AIOWinRegHive:
 	"""
@@ -26,6 +27,18 @@ class AIOWinRegHive:
 		
 		self.__cells_lookup = {}
 		self.__key_lookup = {}
+	
+	@staticmethod
+	def from_bytes(data:bytes, root_hbin:NTRegistryHbin = None, is_file:bool = True):
+		return AIOWinRegHive(ABuffer(io.BytesIO(data)), root_hbin = root_hbin, is_file = is_file)
+
+	@staticmethod
+	def from_buffer(buff: io.BytesIO, root_hbin:NTRegistryHbin = None, is_file:bool = True):
+		return AIOWinRegHive(ABuffer(buff), root_hbin = root_hbin, is_file = is_file)
+	
+	@staticmethod
+	def from_file(file_path:str, root_hbin:NTRegistryHbin = None):
+		return AIOWinRegHive(AFile(file_path), root_hbin=root_hbin, is_file = True)
 		
 	async def close(self):
 		"""Closes the hive"""

@@ -1,5 +1,6 @@
 
 import ntpath
+import io
 
 from aiowinreg.filestruct.header import NTRegistryHeadr
 from aiowinreg.filestruct.hbin import NTRegistryHbin
@@ -14,16 +15,28 @@ from aiowinreg.filestruct.vk import REGTYPE
 
 
 class AIOWinRegHive:
-	def __init__(self, reader, root_hbin = None, is_file = True):
+	def __init__(self, reader:io.BytesIO, root_hbin:NTRegistryHbin = None, is_file:bool = True):
 		self.reader = reader
-		self.header = None
-		self.root = None
+		self.header:NTRegistryHeadr = None
+		self.root:NTRegistryNK = None
 		self.root_hbin = root_hbin
 		self.is_file = is_file
 		if root_hbin is not None:
 			self.header = NTRegistryHeadr()
 		self.__cells_lookup = {}
 		self.__key_lookup = {}
+	
+	@staticmethod
+	def from_bytes(data:bytes, root_hbin:NTRegistryHbin = None, is_file:bool = True):
+		return AIOWinRegHive(io.BytesIO(data), root_hbin = root_hbin, is_file = is_file)
+
+	@staticmethod
+	def from_buffer(buff: io.BytesIO, root_hbin:NTRegistryHbin = None, is_file:bool = True):
+		return AIOWinRegHive(buff, root_hbin = root_hbin, is_file = is_file)
+	
+	@staticmethod
+	def from_file(file_path:str, root_hbin:NTRegistryHbin = None):
+		return AIOWinRegHive(open(file_path, 'rb'), root_hbin=root_hbin, is_file = True)
 		
 	def close(self):
 		self.reader.close()
