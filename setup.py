@@ -45,7 +45,7 @@ setup(
 	],
 	install_requires=[
 		'prompt-toolkit>=3.0.2',
-		'winacl>=0.1.7',
+		'winacl>=0.1.9',
 	],
 	entry_points = {
 	'console_scripts': [
